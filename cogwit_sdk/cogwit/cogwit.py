@@ -1,8 +1,8 @@
 from uuid import UUID
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Union
-from infrastructure.send_api_request import SuccessResponse, send_api_request
-from modules.search.SearchType import SearchType
+from cogwit_sdk.infrastructure.send_api_request import SuccessResponse, send_api_request
+from cogwit_sdk.modules.search.SearchType import SearchType
 
 
 class CogwitConfig(BaseModel):
