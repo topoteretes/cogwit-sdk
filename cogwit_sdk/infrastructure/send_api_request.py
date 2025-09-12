@@ -7,16 +7,18 @@ from typing import Any, Dict, Generic, Optional, TypeVar, TypedDict, Union
 from .json_encoder import json_encoder
 from enum import Enum
 
+
 class HttpMethod(Enum):
     GET = "get"
     POST = "post"
     PUT = "put"
     DELETE = "delete"
     PATCH = "patch"
-    
+
     def has_payload(self) -> bool:
         """Returns True if this HTTP method typically includes a request body."""
         return self in {HttpMethod.POST, HttpMethod.PUT}
+
 
 DataType = TypeVar("DataType")
 
