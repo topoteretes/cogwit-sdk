@@ -1,7 +1,7 @@
 import json
 import aiohttp
 from pydantic import BaseModel
-from typing import Any, Dict, Generic, Optional, TypeVar, TypedDict, Union
+from typing import Any, Dict, Generic, Optional, TypeVar, Union
 
 
 from .json_encoder import json_encoder

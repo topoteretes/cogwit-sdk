@@ -160,6 +160,7 @@ if __name__ == "__main__":
                     SearchType.GRAPH_COMPLETION,
                     use_combined_context=True,
                 )
+                print(results)
 
     import asyncio
 
