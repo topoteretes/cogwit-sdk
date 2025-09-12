@@ -46,7 +46,12 @@ class cogwit:
     def __init__(self, config: CogwitConfig):
         self.config = config
 
-    async def add(self, data: Union[List[str], str], dataset_name: str, dataset_id: Optional[UUID] = None) -> Union[AddResponse, AddError]:
+    async def add(
+        self,
+        data: Union[List[str], str],
+        dataset_name: str,
+        dataset_id: Optional[UUID] = None,
+    ) -> Union[AddResponse, AddError]:
         response_data = await send_api_request(
             "/add",
             "post",
@@ -72,7 +77,9 @@ class cogwit:
                 error=response_data.error,
             )
 
-    async def cognify(self, dataset_ids: List[UUID]) -> Union[CognifyResponse, CognifyError]:
+    async def cognify(
+        self, dataset_ids: List[UUID]
+    ) -> Union[CognifyResponse, CognifyError]:
         response_data = await send_api_request(
             "/cognify",
             "post",
@@ -126,23 +133,23 @@ class cogwit:
             )
 
 
-
-
-
 if __name__ == "__main__":
+
     async def main():
         cogwit_instance = cogwit(
             CogwitConfig(
-              api_key="2286ec4a1aac7ce7a8176222338841d4ccbd2936111314cc",
+                api_key="2286ec4a1aac7ce7a8176222338841d4ccbd2936111314cc",
             )
         )
 
-        result = await cogwit_instance.add(data="Test data", dataset_name="test_dataset")
+        result = await cogwit_instance.add(
+            data="Test data", dataset_name="test_dataset"
+        )
         print(result)
 
         if result.status == "success":
             result = await cogwit_instance.cognify(
-                dataset_ids=[result.dataset_id] # type: ignore
+                dataset_ids=[result.dataset_id]  # type: ignore
             )
 
             print(result)
@@ -155,4 +162,5 @@ if __name__ == "__main__":
                 )
 
     import asyncio
+
     asyncio.run(main())
