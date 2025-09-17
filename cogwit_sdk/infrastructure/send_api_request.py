@@ -1,12 +1,24 @@
 import json
 import aiohttp
 from pydantic import BaseModel
-from typing import Any, Dict, Generic, Optional, TypeVar, TypedDict, Union
+from typing import Any, Dict, Generic, Optional, TypeVar, Union
 
 
 from .json_encoder import json_encoder
+from enum import Enum
 
-methods_with_payload = ["post", "put"]
+
+class HttpMethod(Enum):
+    GET = "get"
+    POST = "post"
+    PUT = "put"
+    DELETE = "delete"
+    PATCH = "patch"
+
+    def has_payload(self) -> bool:
+        """Returns True if this HTTP method typically includes a request body."""
+        return self in {HttpMethod.POST, HttpMethod.PUT}
+
 
 DataType = TypeVar("DataType")
 
@@ -26,15 +38,16 @@ class ErrorResponse(BaseModel):
 
 async def send_api_request(
     api_endpoint,
-    method,
+    method: str,
     headers,
     payload: Optional[Any] = None,
-    ResponsePayloadType=Union[str, TypedDict],
-) -> Union[SuccessResponse, ErrorResponse]:
+) -> Union[SuccessResponse[Union[str, Dict[str, Any]]], ErrorResponse]:
     async with aiohttp.ClientSession() as session:
+        http_method = HttpMethod(method.lower())
+        method_has_payload = http_method.has_payload()
         method_func = getattr(session, method)
 
-        if method in methods_with_payload:
+        if method_has_payload:
             async with method_func(
                 f"{api_base}{api_endpoint}",
                 json=json.dumps(json_encoder(payload)),
@@ -46,7 +59,7 @@ async def send_api_request(
                     else:
                         response_data = await response.text()
 
-                    return SuccessResponse[ResponsePayloadType](
+                    return SuccessResponse(
                         status=response.status,
                         data=response_data,
                     )
@@ -66,7 +79,7 @@ async def send_api_request(
                     else:
                         response_data = await response.text()
 
-                    return SuccessResponse[ResponsePayloadType](
+                    return SuccessResponse(
                         status=response.status,
                         data=response_data,
                     )
