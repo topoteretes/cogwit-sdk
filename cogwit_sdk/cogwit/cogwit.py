@@ -38,6 +38,16 @@ class CognifyError(BaseModel):
     error: Union[str, Dict]
 
 
+class MemifyResponse(RootModel[dict[str, CognifyResult]]):
+    def __getitem__(self, dataset_id: str) -> CognifyResult:
+        return self.root[dataset_id]
+
+
+class MemifyError(BaseModel):
+    status: int
+    error: Union[str, Dict]
+
+
 # class SearchResponse(BaseModel):
 #     results: Dict
 
@@ -70,16 +80,17 @@ class SearchError(BaseModel):
 
 class cogwit:
     config: CogwitConfig
-    SearchType = SearchType
 
     def __init__(self, config: CogwitConfig):
         self.config = config
+        self.SearchType = SearchType
 
     async def add(
         self,
         data: Union[List[str], str],
         dataset_name: str,
         dataset_id: Optional[UUID] = None,
+        node_set: Optional[List[str]] = None,
     ) -> Union[AddResponse, AddError]:
         response_data = await send_api_request(
             "/add",
@@ -92,6 +103,7 @@ class cogwit:
                 "text_data": data if isinstance(data, list) else [data],
                 "dataset_id": dataset_id or "",
                 "dataset_name": dataset_name or "",
+                "node_set": node_set,
             },
         )
 
@@ -109,7 +121,9 @@ class cogwit:
             )
 
     async def cognify(
-        self, dataset_ids: List[UUID]
+        self,
+        dataset_ids: List[UUID],
+        temporal_cognify: bool = False,
     ) -> Union[CognifyResponse, CognifyError]:
         response_data = await send_api_request(
             "/cognify",
@@ -120,6 +134,7 @@ class cogwit:
             },
             {
                 "dataset_ids": dataset_ids,
+                "temporal_cognify": temporal_cognify,
             },
         )
 
@@ -141,11 +156,41 @@ class cogwit:
                 error=response_data.error,
             )
 
+    async def memify(self) -> Union[MemifyResponse, MemifyError]:
+        response_data = await send_api_request(
+            "/memify",
+            "post",
+            {
+                "X-Api-Key": self.config.api_key,
+                "Content-Type": "application/json",
+            },
+            {},
+        )
+
+        if isinstance(response_data, SuccessResponse):
+            return MemifyResponse(
+                {
+                    dataset_id: CognifyResult(
+                        status=result["status"],
+                        dataset_id=UUID(result["dataset_id"]),
+                        pipeline_run_id=UUID(result["pipeline_run_id"]),
+                        dataset_name=result["dataset_name"],
+                    )
+                    for dataset_id, result in response_data.data.items()
+                }
+            )
+        else:
+            return MemifyError(
+                status=response_data.status,
+                error=response_data.error,
+            )
+
     async def search(
         self,
         query_text: str,
-        query_type: SearchType,
+        query_type: SearchType = SearchType.GRAPH_COMPLETION,
         use_combined_context: bool = False,
+        save_interaction: bool = False,
     ) -> Union[SearchResponse, SearchError]:
         response_data = await send_api_request(
             "/search",
@@ -158,6 +203,7 @@ class cogwit:
                 "search_type": query_type.value,
                 "query": query_text,
                 "use_combined_context": use_combined_context,
+                "save_interaction": save_interaction,
             },
         )
 
