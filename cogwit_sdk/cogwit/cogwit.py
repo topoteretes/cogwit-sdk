@@ -1,6 +1,6 @@
 from uuid import UUID
-from pydantic import BaseModel
-from typing import Dict, List, Optional, Union
+from pydantic import BaseModel, RootModel
+from typing import Dict, List, Optional, Union, Any
 from cogwit_sdk.infrastructure.send_api_request import SuccessResponse, send_api_request
 from cogwit_sdk.modules.search.SearchType import SearchType
 
@@ -10,38 +10,67 @@ class CogwitConfig(BaseModel):
 
 
 class AddResponse(BaseModel):
-    status: int
+    status: str
     dataset_id: UUID
     pipeline_run_id: UUID
+    dataset_name: str
 
 
 class AddError(BaseModel):
     status: int
-    error: Dict
+    error: Union[str, Dict]
 
 
-class CognifyResponse(BaseModel):
-    status: int
+class CognifyResult(BaseModel):
+    status: str
+    dataset_id: UUID
     pipeline_run_id: UUID
+    dataset_name: str
+
+
+class CognifyResponse(RootModel[dict[str, CognifyResult]]):
+    def __getitem__(self, dataset_id: str) -> CognifyResult:
+        return self.root[dataset_id]
 
 
 class CognifyError(BaseModel):
     status: int
-    error: Dict
+    error: Union[str, Dict]
 
 
-class SearchResponse(BaseModel):
-    status: int
-    payload: Dict
+# class SearchResponse(BaseModel):
+#     results: Dict
+
+
+class SearchResultDataset(BaseModel):
+    id: UUID
+    name: str
+
+
+class CombinedSearchResult(BaseModel):
+    result: Optional[Any]
+    context: Dict[str, Any]
+    graphs: Optional[Dict[str, Any]] = {}
+    datasets: List[SearchResultDataset]
+
+
+class SearchResult(BaseModel):
+    search_result: Any
+    dataset_id: Optional[UUID]
+    dataset_name: Optional[str]
+
+
+SearchResponse = Union[List[SearchResult], CombinedSearchResult, List[Any]]
 
 
 class SearchError(BaseModel):
     status: int
-    error: Dict
+    error: Union[str, Dict]
 
 
 class cogwit:
     config: CogwitConfig
+    SearchType = SearchType
 
     def __init__(self, config: CogwitConfig):
         self.config = config
@@ -57,19 +86,21 @@ class cogwit:
             "post",
             {
                 "X-Api-Key": self.config.api_key,
+                "Content-Type": "application/json",
             },
             {
-                "text_data": data,
-                "dataset_id": dataset_id,
-                "dataset_name": dataset_name,
+                "text_data": data if isinstance(data, list) else [data],
+                "dataset_id": dataset_id or "",
+                "dataset_name": dataset_name or "",
             },
         )
 
         if isinstance(response_data, SuccessResponse):
             return AddResponse(
-                status=response_data.status,
+                status=response_data.data["status"],
                 dataset_id=UUID(response_data.data["dataset_id"]),
                 pipeline_run_id=UUID(response_data.data["pipeline_run_id"]),
+                dataset_name=response_data.data["dataset_name"],
             )
         else:
             return AddError(
@@ -85,6 +116,7 @@ class cogwit:
             "post",
             {
                 "X-Api-Key": self.config.api_key,
+                "Content-Type": "application/json",
             },
             {
                 "dataset_ids": dataset_ids,
@@ -93,8 +125,15 @@ class cogwit:
 
         if isinstance(response_data, SuccessResponse):
             return CognifyResponse(
-                status=response_data.status,
-                pipeline_run_id=UUID(response_data.data["pipeline_run_id"]),
+                {
+                    dataset_id: CognifyResult(
+                        status=result["status"],
+                        dataset_id=UUID(result["dataset_id"]),
+                        pipeline_run_id=UUID(result["pipeline_run_id"]),
+                        dataset_name=result["dataset_name"],
+                    )
+                    for dataset_id, result in response_data.data.items()
+                }
             )
         else:
             return CognifyError(
@@ -113,55 +152,25 @@ class cogwit:
             "post",
             {
                 "X-Api-Key": self.config.api_key,
+                "Content-Type": "application/json",
             },
             {
-                "query_type": str(query_type),
-                "query_text": query_text,
+                "search_type": query_type.value,
+                "query": query_text,
                 "use_combined_context": use_combined_context,
             },
         )
 
         if isinstance(response_data, SuccessResponse):
-            return SearchResponse(
-                status=response_data.status,
-                payload=response_data.data,
-            )
+            try:
+                return CombinedSearchResult(**response_data.data)
+            except (ValueError, TypeError):
+                try:
+                    return [SearchResult(**result) for result in response_data.data]
+                except (ValueError, TypeError):
+                    return response_data.data
         else:
             return SearchError(
                 status=response_data.status,
                 error=response_data.error,
             )
-
-
-if __name__ == "__main__":
-
-    async def main():
-        cogwit_instance = cogwit(
-            CogwitConfig(
-                api_key="2286ec4a1aac7ce7a8176222338841d4ccbd2936111314cc",
-            )
-        )
-
-        result = await cogwit_instance.add(
-            data="Test data", dataset_name="test_dataset"
-        )
-        print(result)
-
-        if result.status == "success":
-            result = await cogwit_instance.cognify(
-                dataset_ids=[result.dataset_id]  # type: ignore
-            )
-
-            print(result)
-
-            if result.status == "success":
-                results = await cogwit_instance.search(
-                    "What is in data?",
-                    SearchType.GRAPH_COMPLETION,
-                    use_combined_context=True,
-                )
-                print(results)
-
-    import asyncio
-
-    asyncio.run(main())

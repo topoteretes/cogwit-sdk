@@ -1,4 +1,4 @@
-import json
+import os
 import aiohttp
 from pydantic import BaseModel
 from typing import Any, Dict, Generic, Optional, TypeVar, Union
@@ -6,6 +6,9 @@ from typing import Any, Dict, Generic, Optional, TypeVar, Union
 
 from .json_encoder import json_encoder
 from enum import Enum
+
+
+api_base = os.getenv("COGWIT_API_BASE", "https://api.cognee.ai")
 
 
 class HttpMethod(Enum):
@@ -22,18 +25,15 @@ class HttpMethod(Enum):
 
 DataType = TypeVar("DataType")
 
-# api_base = "https://api.cognee.ai"
-api_base = "http://localhost:8001"
 
-
-class SuccessResponse(Generic[DataType], BaseModel):
+class SuccessResponse(BaseModel, Generic[DataType]):
     status: int
     data: DataType
 
 
 class ErrorResponse(BaseModel):
     status: int
-    error: Dict[str, Any]
+    error: Union[str, Dict[str, Any]]
 
 
 async def send_api_request(
@@ -41,7 +41,7 @@ async def send_api_request(
     method: str,
     headers,
     payload: Optional[Any] = None,
-) -> Union[SuccessResponse[Union[str, Dict[str, Any]]], ErrorResponse]:
+) -> Union[SuccessResponse[Any], ErrorResponse]:
     async with aiohttp.ClientSession() as session:
         http_method = HttpMethod(method.lower())
         method_has_payload = http_method.has_payload()
@@ -49,9 +49,10 @@ async def send_api_request(
 
         if method_has_payload:
             async with method_func(
-                f"{api_base}{api_endpoint}",
-                json=json.dumps(json_encoder(payload)),
+                f"{api_base}/api{api_endpoint}",
+                json=json_encoder(payload),
                 headers=headers,
+                timeout=aiohttp.ClientTimeout(total=120 * 60, sock_connect=30),
             ) as response:
                 if response.status >= 200 and response.status < 300:
                     if headers.get("Content-Type", "") == "application/json":
@@ -66,12 +67,14 @@ async def send_api_request(
                 else:
                     return ErrorResponse(
                         status=response.status,
-                        error=await response.json(),
+                        error=await response.json()
+                        if response.status != 500
+                        else await response.text(),
                     )
 
         else:
             async with method_func(
-                f"{api_base}{api_endpoint}", headers=headers
+                f"{api_base}/api{api_endpoint}", headers=headers
             ) as response:
                 if response.status == 200:
                     if headers.get("Content-Type", "") == "application/json":
