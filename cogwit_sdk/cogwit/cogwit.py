@@ -195,6 +195,7 @@ class cogwit:
         self,
         query_text: str,
         query_type: SearchType = SearchType.GRAPH_COMPLETION,
+        datasets: List[str] = ["main_dataset"],
         use_combined_context: bool = False,
         save_interaction: bool = False,
     ) -> Union[SearchResponse, SearchError]:
@@ -210,6 +211,7 @@ class cogwit:
                 "query": query_text,
                 "use_combined_context": use_combined_context,
                 "save_interaction": save_interaction,
+                "datasets": datasets,
             },
         )
 
