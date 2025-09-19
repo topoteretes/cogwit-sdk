@@ -122,7 +122,7 @@ class cogwit:
 
     async def cognify(
         self,
-        dataset_names: List[str] = ["main_dataset"],
+        datasets: List[str] = ["main_dataset"],
         dataset_ids: List[UUID] = [],
         temporal_cognify: bool = False,
     ) -> Union[CognifyResponse, CognifyError]:
@@ -134,7 +134,7 @@ class cogwit:
                 "Content-Type": "application/json",
             },
             {
-                "datasets": dataset_names,
+                "datasets": datasets,
                 "dataset_ids": dataset_ids,
                 "temporal_cognify": temporal_cognify,
             },
