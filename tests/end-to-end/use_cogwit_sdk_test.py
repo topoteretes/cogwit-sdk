@@ -1,3 +1,4 @@
+import asyncio
 import os
 from cogwit_sdk import cogwit, CogwitConfig
 from cogwit_sdk.responses import (
@@ -76,7 +77,5 @@ async def main():
     assert search_result.result
     assert search_result.result[0]["text"] == "Test data"
 
-
-import asyncio
 
 asyncio.run(main())
