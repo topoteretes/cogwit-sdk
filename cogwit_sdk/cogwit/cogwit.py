@@ -88,7 +88,7 @@ class cogwit:
     async def add(
         self,
         data: Union[List[str], str],
-        dataset_name: str,
+        dataset_name: str = "main_dataset",
         dataset_id: Optional[UUID] = None,
         node_set: Optional[List[str]] = None,
     ) -> Union[AddResponse, AddError]:
@@ -102,7 +102,7 @@ class cogwit:
             {
                 "text_data": data if isinstance(data, list) else [data],
                 "dataset_id": dataset_id or "",
-                "dataset_name": dataset_name or "",
+                "dataset_name": dataset_name,
                 "node_set": node_set,
             },
         )
@@ -122,7 +122,7 @@ class cogwit:
 
     async def cognify(
         self,
-        dataset_name: str,
+        datasets: List[str] = ["main_dataset"],
         temporal_cognify: bool = False,
     ) -> Union[CognifyResponse, CognifyError]:
         response_data = await send_api_request(
@@ -133,7 +133,7 @@ class cogwit:
                 "Content-Type": "application/json",
             },
             {
-                "datasets": [dataset_name],
+                "datasets": [dataset_name for dataset_name in datasets],
                 "temporal_cognify": temporal_cognify,
             },
         )
@@ -156,7 +156,9 @@ class cogwit:
                 error=response_data.error,
             )
 
-    async def memify(self) -> Union[MemifyResponse, MemifyError]:
+    async def memify(
+        self, dataset_name: str = "main_dataset"
+    ) -> Union[MemifyResponse, MemifyError]:
         response_data = await send_api_request(
             "/memify",
             "post",
@@ -164,7 +166,9 @@ class cogwit:
                 "X-Api-Key": self.config.api_key,
                 "Content-Type": "application/json",
             },
-            {},
+            {
+                "dataset": dataset_name,  # cognee.memify uses dataset not dataset_name, but using dataset_name for consistency with cogwit.add
+            },
         )
 
         if isinstance(response_data, SuccessResponse):
