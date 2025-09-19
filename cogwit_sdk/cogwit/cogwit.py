@@ -122,7 +122,8 @@ class cogwit:
 
     async def cognify(
         self,
-        datasets: List[str] = ["main_dataset"],
+        dataset_names: List[str] = ["main_dataset"],
+        dataset_ids: List[UUID] = [],
         temporal_cognify: bool = False,
     ) -> Union[CognifyResponse, CognifyError]:
         response_data = await send_api_request(
@@ -133,7 +134,8 @@ class cogwit:
                 "Content-Type": "application/json",
             },
             {
-                "datasets": [dataset_name for dataset_name in datasets],
+                "datasets": dataset_names,
+                "dataset_ids": dataset_ids,
                 "temporal_cognify": temporal_cognify,
             },
         )
@@ -167,7 +169,7 @@ class cogwit:
                 "Content-Type": "application/json",
             },
             {
-                "dataset": dataset_name,  # cognee.memify uses dataset not dataset_name, but using dataset_name for consistency with cogwit.add
+                "dataset_name": dataset_name,
             },
         )
 
