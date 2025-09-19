@@ -122,7 +122,7 @@ class cogwit:
 
     async def cognify(
         self,
-        dataset_ids: List[UUID],
+        dataset_name: str,
         temporal_cognify: bool = False,
     ) -> Union[CognifyResponse, CognifyError]:
         response_data = await send_api_request(
@@ -133,7 +133,7 @@ class cogwit:
                 "Content-Type": "application/json",
             },
             {
-                "dataset_ids": dataset_ids,
+                "datasets": [dataset_name],
                 "temporal_cognify": temporal_cognify,
             },
         )
